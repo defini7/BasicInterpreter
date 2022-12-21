@@ -41,7 +41,9 @@ enum TokenId : uint32_t
 	Fix,
 	Let,
 	Print,
-	Goto
+	Goto,
+	If,
+	Then,
 };
 
 struct Token
@@ -130,7 +132,7 @@ void Parse(std::list<std::string>& listInput, std::list<Token>& listTokenList, s
 
 bool ReadFromFile(const std::string& sFileName, std::list<std::string>& sOutput)
 {
-	std::ifstream fFile("test.parser");
+	std::ifstream fFile(sFileName);
 	if (!fFile.is_open()) return false;
 
 	sOutput.clear();
@@ -157,6 +159,7 @@ struct Expression
 
 int GetPriority(Token& t)
 {
+	if (t.nId == Equals) return 1;
 	if (t.nId == Plus) return 1;
 	if (t.nId == Minus) return 1;
 	if (t.nId == Mul) return 2;
@@ -208,7 +211,8 @@ long double Eval(Expression& e)
 		case Mul: return a * b;
 		case Div: return a / b;
 		case Pow: return pow(a, b);
-		case Mod: return (int)a % (int)b;
+		case Mod: return double((int)a % (int)b);
+		case Equals: return double(a == b);
 		}
 
 		std::cerr << "[Error] Unknown binary operator: " << e.token.sValue << std::endl;
@@ -396,6 +400,45 @@ void Interpret(std::vector<std::vector<Token>>& vecTokenized)
 		}
 		break;
 
+		case If:
+		{
+			std::vector<Token> vecExpr;
+
+			// IF <expr> THEN <...>
+			while (vecLine.front().nId != Then)
+			{
+				if (mapVariables.count(vecLine.front().sValue) > 0)
+				{
+					vecLine.front().nId = Number;
+					vecLine.front().sValue = mapVariables[vecLine.front().sValue];
+				}
+
+				vecExpr.push_back(vecLine.front());
+				vecLine.erase(vecLine.begin());
+			}
+
+			// Remove THEN
+			vecLine.erase(vecLine.begin());
+
+			int nCurrentTok = 0;
+			Expression expr = DoBinExpr(vecExpr, nCurrentTok, 0, false);
+
+			vecExpr.clear();
+
+			if ((bool)Eval(expr))
+			{
+				vecTokenized[i].clear();
+
+				vecTokenized[i].push_back({ Number, std::to_string(nLine) });
+				for (auto& t : vecLine)
+					vecTokenized[i].push_back(t);
+
+				i--;
+			}
+
+		}
+		break;
+
 		}
 
 	}
@@ -403,7 +446,7 @@ void Interpret(std::vector<std::vector<Token>>& vecTokenized)
 	
 }
 
-int main(int argc, char** argv)
+int main()
 {
 	std::list<Token> listTokens = {
 		{ Plus, "+" },
@@ -434,10 +477,12 @@ int main(int argc, char** argv)
 		{ Let, "LET" },
 		{ Print, "PRINT" },
 		{ Goto, "GOTO" },
+		{ If, "IF" },
+		{ Then, "THEN" }
 	};
 
 	std::list<std::string> listInput;
-	ReadFromFile(argv[1], listInput);
+	ReadFromFile("Main.bas", listInput);
 
 	std::vector<std::vector<Token>> vecTokenized;
 
