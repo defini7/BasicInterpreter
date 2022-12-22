@@ -58,6 +58,11 @@ struct Token
 {
 	uint32_t nId;
 	std::string sValue;
+
+	bool operator==(Token t)
+	{
+		return nId == t.nId && sValue == t.sValue;
+	}
 };
 
 struct Expression

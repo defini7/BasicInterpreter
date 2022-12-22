@@ -12,6 +12,8 @@ void cInterpreter::Do()
 	std::unordered_map<std::string, std::string> mapVariables;
 	std::map<int, int> mapLines;
 
+	std::vector<std::vector<Token>> vecOriginal = m_vecTokenized;
+
 	for (size_t i = 0; i < m_vecTokenized.size(); i++)
 	{
 		std::vector<Token> vecLine = m_vecTokenized[i];
@@ -102,8 +104,6 @@ void cInterpreter::Do()
 				if (nCurrentTok >= vecLine.size())
 					break;
 			}
-
-			std::cout << std::endl;
 		}
 		break;
 
@@ -118,6 +118,9 @@ void cInterpreter::Do()
 			int nGoto = std::stoi(vecLine.front().sValue);
 
 			i = mapLines[nGoto] - 1;
+			
+			for (size_t j = i; j < m_vecTokenized.size(); j++)
+				m_vecTokenized[j] = vecOriginal[j];
 
 		}
 		break;
@@ -145,12 +148,16 @@ void cInterpreter::Do()
 			// If expression's result is TRUE, then
 			if (eval.Get(vecExpr) == 1.0)
 			{
-				// We erase all tokens after ELSE token
-				while (vecLine.back().nId != Else)
-					vecLine.pop_back();
+				Token tElse = { Else, "ELSE" };
+				if (std::count(vecLine.begin(), vecLine.end(), tElse) > 0)
+				{
+					// We erase all tokens after ELSE token
+					while (vecLine.back().nId != Else)
+						vecLine.pop_back();
 
-				// Now erase ELSE token
-				vecLine.pop_back();
+					// Now erase ELSE token
+					vecLine.pop_back();
+				}
 
 				// Set current line to what we got
 				m_vecTokenized[i].clear();
@@ -173,21 +180,25 @@ void cInterpreter::Do()
 				// and stay with ELSE only
 
 				// Erase full IF body
-				while (vecLine.front().nId != Else)
-					vecLine.erase(vecLine.begin());
-
-				int nElsePos = -1;
-				for (size_t j = vecLine.size() - 1; j > 0; j--)
+				Token tElse = { Else, "ELSE" };
+				if (std::count(vecLine.begin(), vecLine.end(), tElse) > 0)
 				{
-					if (vecLine[j].nId == Else)
-						nElsePos = j;
+					while (vecLine.front().nId != Else)
+						vecLine.erase(vecLine.begin());
+
+					int nElsePos = -1;
+					for (size_t j = vecLine.size() - 1; j > 0; j--)
+					{
+						if (vecLine[j].nId == Else)
+							nElsePos = j;
+					}
+
+					if (nElsePos != -1)
+						vecLine.erase(vecLine.begin(), vecLine.begin() + nElsePos);
+
+					// Now erase ELSE token
+					vecLine.erase(vecLine.begin());
 				}
-
-				if (nElsePos != -1)
-					vecLine.erase(vecLine.begin(), vecLine.begin() + nElsePos);
-
-				// Now erase ELSE token
-				vecLine.erase(vecLine.begin());
 
 				// The same reason as with positive result
 				m_vecTokenized[i].clear();

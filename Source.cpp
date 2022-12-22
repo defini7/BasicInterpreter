@@ -1,9 +1,9 @@
-#include "Common.h"
+﻿#include "Common.h"
 
 #include "cScanner.h"
 #include "cInterpreter.h"
 
-int main(int argc, char** argv)
+int main()
 {
 	std::list<Token> listTokens = {
 		{ Plus, "+" },
@@ -43,7 +43,7 @@ int main(int argc, char** argv)
 
 	cScanner scanner;
 
-	scanner.Read(argv[1], listTokens);
+	scanner.Read("Main.bas", listTokens);
 	scanner.Scan();
 
 	cInterpreter interpreter;

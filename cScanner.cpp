@@ -112,7 +112,7 @@ void cScanner::Read(const std::string& sFileName, std::list<Token>& listTokenLis
 	if (!ReadFromFile(sFileName))
 	{
 		std::cerr << "[Error] Could not load the file" << std::endl;
-		return;
+		exit(1);
 	}
 
 	for (const auto& t : listTokenList)
