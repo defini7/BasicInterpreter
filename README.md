@@ -1,4 +1,4 @@
-# MSX-Basic-Interpreter
+# Basic Interpreter
 Интерпретатор MSX Basic
 
 # Важно!!
