@@ -47,7 +47,9 @@ enum TokenId : uint32_t
 	If,
 	Else,
 	Then,
-	Sleep
+	Sleep,
+	LessEquals,
+	GreaterEquals
 };
 
 struct Token
@@ -97,12 +99,19 @@ void Parse(std::list<std::string>& listInput, std::list<Token>& listTokenList, s
 			return { String, sStr };
 		}
 
+		Token tMatch = { -1 };
 		for (const auto& t : listTokenList)
 			if (strmatch((*itLine), t.sValue, nCursor))
 			{
-				nCursor += t.sValue.length();
-				return t;
+				tMatch.nId = t.nId;
+				tMatch.sValue = t.sValue;
 			}
+
+		if (tMatch.nId != -1)
+		{
+			nCursor += tMatch.sValue.length();
+			return tMatch;
+		}
 
 		while ((isalpha((*itLine)[nCursor]) || isdigit((*itLine)[nCursor])) && nCursor < (*itLine).length())
 		{
@@ -166,6 +175,8 @@ int GetPriority(Token& t)
 	if (t.nId == Equals) return 1;
 	if (t.nId == Less) return 1;
 	if (t.nId == Greater) return 1;
+	if (t.nId == LessEquals) return 1;
+	if (t.nId == GreaterEquals) return 1;
 	if (t.nId == NotEquals) return 1;
 	if (t.nId == Plus) return 1;
 	if (t.nId == Minus) return 1;
@@ -222,6 +233,8 @@ long double Eval(Expression& e)
 		case Equals: return double(a == b);
 		case Less: return double(a < b);
 		case Greater: return double(a > b);
+		case LessEquals: return double(a <= b);
+		case GreaterEquals: return double(a >= b);
 		case NotEquals: return double(a != b);
 		}
 
@@ -469,6 +482,16 @@ void Interpret(std::vector<std::vector<Token>>& vecTokenized)
 				while (vecLine.front().nId != Else)
 					vecLine.erase(vecLine.begin());
 
+				int nElsePos = -1;
+				for (size_t j = vecLine.size() - 1; j > 0; j--)
+				{
+					if (vecLine[j].nId == Else)
+						nElsePos = j;
+				}
+
+				if (nElsePos != -1)
+					vecLine.erase(vecLine.begin(), vecLine.begin() + nElsePos);
+
 				// Now erase ELSE token
 				vecLine.erase(vecLine.begin());
 
@@ -522,7 +545,8 @@ int main()
 		{ NotEquals, "!=" },
 		{ Less, "<" },
 		{ Greater, ">" },
-		{ Colon, ":" },
+		{ LessEquals, "<=" },
+		{ GreaterEquals, ">=" },
 		{ Abs, "ABS" },
 		{ Sin, "SIN" },
 		{ Cos, "COS" },
