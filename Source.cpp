@@ -5,6 +5,8 @@
 #include <fstream>
 #include <unordered_map>
 #include <map>
+#include <chrono>
+#include <thread>
 
 enum TokenId : uint32_t
 {
@@ -43,7 +45,9 @@ enum TokenId : uint32_t
 	Print,
 	Goto,
 	If,
+	Else,
 	Then,
+	Sleep
 };
 
 struct Token
@@ -160,6 +164,9 @@ struct Expression
 int GetPriority(Token& t)
 {
 	if (t.nId == Equals) return 1;
+	if (t.nId == Less) return 1;
+	if (t.nId == Greater) return 1;
+	if (t.nId == NotEquals) return 1;
 	if (t.nId == Plus) return 1;
 	if (t.nId == Minus) return 1;
 	if (t.nId == Mul) return 2;
@@ -213,6 +220,9 @@ long double Eval(Expression& e)
 		case Pow: return pow(a, b);
 		case Mod: return double((int)a % (int)b);
 		case Equals: return double(a == b);
+		case Less: return double(a < b);
+		case Greater: return double(a > b);
+		case NotEquals: return double(a != b);
 		}
 
 		std::cerr << "[Error] Unknown binary operator: " << e.token.sValue << std::endl;
@@ -404,7 +414,7 @@ void Interpret(std::vector<std::vector<Token>>& vecTokenized)
 		{
 			std::vector<Token> vecExpr;
 
-			// IF <expr> THEN <...>
+			// IF <expr> THEN <...> ELSE <...>
 			while (vecLine.front().nId != Then)
 			{
 				if (mapVariables.count(vecLine.front().sValue) > 0)
@@ -425,17 +435,67 @@ void Interpret(std::vector<std::vector<Token>>& vecTokenized)
 
 			vecExpr.clear();
 
-			if ((bool)Eval(expr))
+			// If expression's result is TRUE, then
+			if (Eval(expr) == 1.0)
 			{
+				// We erase all tokens after ELSE token
+				while (vecLine.back().nId != Else)
+					vecLine.pop_back();
+
+				// Now erase ELSE token
+				vecLine.pop_back();
+
+				// Set current line to what we got
 				vecTokenized[i].clear();
 
+				// First token is always number of line
 				vecTokenized[i].push_back({ Number, std::to_string(nLine) });
+
+				// Then append other tokens
+				for (auto& t : vecLine)
+					vecTokenized[i].push_back(t);
+
+				// decrease 'i', because in the next iteration
+				// of for loop 'i' will be increased, but
+				// we want to parse the same line again
+				i--;
+			}
+			else
+			{
+				// We should skip full IF statement
+				// and stay with ELSE only
+
+				// Erase full IF body
+				while (vecLine.front().nId != Else)
+					vecLine.erase(vecLine.begin());
+
+				// Now erase ELSE token
+				vecLine.erase(vecLine.begin());
+
+				// The same reason as with positive result
+				vecTokenized[i].clear();
+				vecTokenized[i].push_back({ Number, std::to_string(nLine) });
+
 				for (auto& t : vecLine)
 					vecTokenized[i].push_back(t);
 
 				i--;
 			}
 
+		}
+		break;
+
+		case Sleep:
+		{
+			if (vecLine.front().nId != Number)
+			{
+				std::cerr << "[Error] Expected number after GOTO, but got: " << vecLine.front().sValue << std::endl;
+				exit(1);
+			}
+
+			int nSleepFor = std::stoi(vecLine.front().sValue);
+
+			std::this_thread::sleep_for(std::chrono::seconds(nSleepFor));
 		}
 		break;
 
@@ -478,7 +538,9 @@ int main()
 		{ Print, "PRINT" },
 		{ Goto, "GOTO" },
 		{ If, "IF" },
-		{ Then, "THEN" }
+		{ Then, "THEN" },
+		{ Sleep, "SLEEP" },
+		{ Else, "ELSE" }
 	};
 
 	std::list<std::string> listInput;
